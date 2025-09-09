@@ -3,4 +3,3 @@ uvicorn
 httpx
 dotenv
 notion-client
-fcntl
