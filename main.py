@@ -7,6 +7,41 @@ import json
 import logging
 from dotenv import load_dotenv
 
+# --- add near the top ---
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response
+import traceback
+
+# CORS is harmless for this public read endpoint and helps generic clients
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET","POST","PUT","DELETE","HEAD","OPTIONS"],
+    allow_headers=["*"],
+    max_age=600,
+)
+
+# Convert any uncaught exception into structured JSON (no opaque 500s)
+@app.exception_handler(Exception)
+async def _unhandled(_, exc: Exception):
+    # Log full traceback to Render logs
+    logger.exception("Unhandled error")
+    return JSONResponse(
+        status_code=500,
+        content={"error": "internal_error", "detail": str(exc)[:500]},
+        headers={"Content-Type": "application/json; charset=utf-8"}
+    )
+
+# Health/echo endpoints for quick diagnostics
+@app.get("/health")
+def health():
+    return {"ok": True}
+
+@app.get("/echo")
+def echo(request: Request):
+    return {"headers": dict(request.headers), "url": str(request.url), "method": request.method}
+
+
 # Configure logging with line numbers
 logging.basicConfig(
     level=logging.DEBUG,
