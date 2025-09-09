@@ -1,5 +1,8 @@
-fastapi
 uvicorn
 httpx
 dotenv
+fastapi==0.111.*
+pydantic==2.*
+requests>=2.31
 notion-client
+
