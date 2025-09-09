@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from models import Task
 from typing import List
 from notion_client import Client
@@ -12,6 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 import traceback
 
+
+app = FastAPI()
 # CORS is harmless for this public read endpoint and helps generic clients
 app.add_middleware(
     CORSMiddleware,
@@ -44,14 +46,14 @@ def echo(request: Request):
 
 # Configure logging with line numbers
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.WARNING,
     format='%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-app = FastAPI()
+
 
 NOTION_TOKEN = os.getenv("NOTION_TOKEN")
 NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
@@ -152,7 +154,6 @@ def notion_to_task(page) -> dict:
 def get_all_tasks() -> List[dict]:
     try:
         results = notion.databases.query(database_id=NOTION_DATABASE_ID)["results"]
-        logger.debug(f"Fetched {len(results)} tasks from Notion.")
         return [notion_to_task(page) for page in results]
     except Exception as e:
         logger.error(f"Failed to fetch tasks from Notion: {e}")
@@ -178,9 +179,7 @@ def api_get_all_tasks():
 @app.get("/tasks/active", response_model=List[Task])
 def get_active_tasks():
     tasks = get_all_tasks()
-    logger.debug(f"Fetched {len(tasks)} tasks from Notion.")
     active_tasks = [t for t in tasks if t["status"] != "Done"]
-    logger.debug(f"Filtered {len(active_tasks)} active tasks: {json.dumps(active_tasks, indent=2, default=str)}")
     return active_tasks
 
 
@@ -245,7 +244,7 @@ def add_task(task: Task):
             "parent": {"database_id": NOTION_DATABASE_ID},
             "properties": properties
         }
-        logger.debug(f"Sending to Notion API: {json.dumps(request_payload, indent=2)}")
+        # logger.debug(f"Sending to Notion API: {json.dumps(request_payload, indent=2)}")
 
         new_page = notion.pages.create(
             parent={"database_id": NOTION_DATABASE_ID},
@@ -253,11 +252,11 @@ def add_task(task: Task):
         )
         
         # Debug logging - what we got back from Notion
-        logger.debug(f"Notion API Response: {json.dumps(new_page, indent=2, default=str)}")
+        # logger.debug(f"Notion API Response: {json.dumps(new_page, indent=2, default=str)}")
         
         # Convert Notion response to our Task format
         result = notion_to_task(new_page)
-        logger.debug(f"Converted task result: {json.dumps(result, indent=2, default=str)}")
+        # logger.debug(f"Converted task result: {json.dumps(result, indent=2, default=str)}")
         
         return result
     except Exception as e:

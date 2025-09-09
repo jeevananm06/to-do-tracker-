@@ -1,33 +1,78 @@
-# FastAPI Template
+# To-Do Tracker API with Notion Integration
 
-This sample repo contains the recommended structure for a Python FastAPI project. In this sample, we use `fastapi` to build a web application and the `pytest` to run tests.
+A FastAPI-based to-do tracker that integrates seamlessly with Notion, allowing you to manage tasks using both a modern API and your Notion workspace.
 
-For a more in-depth tutorial, see our [Fast API tutorial](https://code.visualstudio.com/docs/python/tutorial-fastapi).
+## Features
+- **Task CRUD**: Create, read, update, and manage tasks via REST API.
+- **Notion Integration**: Syncs tasks with a Notion database.
+- **Swagger UI**: Interactive API docs at `/docs`.
+- **File-based fallback**: Local `tasks.json` storage if Notion is not configured.
+- **Rich Task Model**: Supports assignee, due date, priority, attachments, comments, and more.
 
-The code in this repo aims to follow Python style guidelines as outlined in [PEP 8](https://peps.python.org/pep-0008/).
+## Requirements
+- Python 3.8+
+- [FastAPI](https://fastapi.tiangolo.com/), [Uvicorn](https://www.uvicorn.org/), [notion-client](https://github.com/ramnes/notion-sdk-py), [httpx](https://www.python-httpx.org/), [python-dotenv](https://github.com/theskumar/python-dotenv)
 
-## Set up instructions
+Install dependencies:
+```sh
+pip install -r requirements.txt
+```
 
-This sample makes use of Dev Containers, in order to leverage this setup, make sure you have [Docker installed](https://www.docker.com/products/docker-desktop).
+## Environment Variables
+Set the following in a `.env` file (see `.env.example`):
+```
+NOTION_TOKEN=your_notion_integration_token_here
+NOTION_DATABASE_ID=your_notion_database_id_here
+```
 
-To successfully run this example, we recommend the following VS Code extensions:
+## Running the Application
+```sh
+uvicorn main:app --reload
+```
+- Access API at: http://localhost:8000
+- Interactive docs: http://localhost:8000/docs
 
-- [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
-- [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
-- [Python Debugger](https://marketplace.visualstudio.com/items?itemName=ms-python.debugpy)
-- [Pylance](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance) 
+## API Endpoints
+| Method | Endpoint                | Description                  |
+|--------|-------------------------|------------------------------|
+| GET    | `/`                     | API welcome message          |
+| GET    | `/about`                | About page                   |
+| GET    | `/tasks`                | List all tasks               |
+| POST   | `/tasks`                | Create a new task            |
+| GET    | `/tasks/active`         | List all active tasks        |
+| GET    | `/tasks/{task_id}`      | Get details of a task        |
+| PUT    | `/tasks/{task_id}`      | Update a task                |
+| PATCH  | `/tasks/{task_id}/status` | Update task status         |
+| PATCH  | `/tasks/{task_id}/comment`| Add a comment to a task    |
+| PATCH  | `/tasks/{task_id}/link`   | Add a link to task         |
 
-In addition to these extension there a few settings that are also useful to enable. You can enable to following settings by opening the Settings editor (`Ctrl+,`) and searching for the following settings:
+## Task Model
+Example of a Task object:
+```json
+{
+  "task_id": 1,
+  "task_name": "Sample Task",
+  "status": "In Progress",
+  "assignee": "Jeevanantham Govindaraju",
+  "due_date": "2025-09-10",
+  "priority": "High",
+  "task_type": "Bug",
+  "description": "Fix the login issue.",
+  "attach_file": "https://example.com/file.pdf",
+  "past_due": false,
+  "updated_at": "2025-09-09T16:48:04+05:30",
+  "effort_level": "Medium",
+  "summary": "Login bug needs urgent fix."
+}
+```
 
-- Python > Analysis > **Type Checking Mode** : `basic`
-- Python > Analysis > Inlay Hints: **Function Return Types** : `enable`
-- Python > Analysis > Inlay Hints: **Variable Types** : `enable`
+## Testing
+To run tests:
+```sh
+pytest
+```
 
-## Running the sample
-- Open the template folder in VS Code (**File** > **Open Folder...**)
-- Open the Command Palette in VS Code (**View > Command Palette...**) and run the **Dev Container: Reopen in Container** command.
-- Run the app using the Run and Debug view or by pressing `F5`
-- `Ctrl + click` on the URL that shows up on the terminal to open the running application 
-- Test the API functionality by navigating to `/docs` URL to view the Swagger UI
-- Configure your Python test in the Test Panel or by triggering the **Python: Configure Tests** command from the Command Palette
-- Run tests in the Test Panel or by clicking the Play Button next to the individual tests in the `test_main.py` file
+## Notes
+- Ensure your Notion integration has access to the specified database.
+- If Notion credentials are not set, tasks are stored in `tasks.json` locally.
+- For more details, see code comments in `main.py` and `models.py`.
