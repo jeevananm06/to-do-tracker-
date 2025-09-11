@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from models import Task
 from typing import List
 from notion_client import Client
@@ -17,11 +17,20 @@ app = FastAPI()
 # CORS is harmless for this public read endpoint and helps generic clients
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["GET","POST","PUT","DELETE","HEAD","OPTIONS"],
+    allow_origins=[
+        "https://jeevananm06.github.io",
+        "http://localhost:5500",  # if you test locally
+    ],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "OPTIONS", "HEAD"],
     allow_headers=["*"],
-    max_age=600,
 )
+
+API_KEY = os.getenv("PUBLIC_WRITE_KEY") 
+
+
+def require_key(request: Request):
+    if not API_KEY or request.headers.get("x-api-key") != API_KEY:
+        raise HTTPException(status_code=401, detail="invalid api key")
 
 # Convert any uncaught exception into structured JSON (no opaque 500s)
 @app.exception_handler(Exception)
@@ -193,7 +202,7 @@ def get_task(task_id: int):
 
 
 @app.post("/tasks", response_model=Task)
-def add_task(task: Task):
+def add_task(task: Task, _: None = Depends(require_key)):
     if not notion or not NOTION_DATABASE_ID:
         raise HTTPException(status_code=503, detail="Notion integration not configured. Please set NOTION_TOKEN and NOTION_DATABASE_ID environment variables.")
     
@@ -266,7 +275,7 @@ def add_task(task: Task):
 
 
 @app.put("/tasks/{task_id}", response_model=Task)
-def update_task(task_id: int, task: Task):
+def update_task(task_id: int, task: Task, _: None = Depends(require_key)):
     # Notion API does not support direct update by task_id, so we have to search and update
     pages = notion.databases.query(database_id=NOTION_DATABASE_ID)["results"]
     for page in pages:
@@ -279,21 +288,34 @@ def update_task(task_id: int, task: Task):
                 page_task_id = props["Task id"]["unique_id"]["number"]
         if page_task_id == task_id:
             try:
+                update_props = {}
+                if task.task_name:
+                    update_props["Task name"] = {"title": [{"text": {"content": task.task_name}}]}
+                if task.status:
+                    update_props["Status"] = {"status": {"name": task.status}}
+                if task.assignee:
+                    update_props["Assignee"] = {"people": [{"id": "6aaf53e2-c3b4-4fc6-93b3-c5d41e3f65a0"}]}
+                if task.due_date:
+                    update_props["Due date"] = {"date": {"start": task.due_date}}
+                if task.priority:
+                    update_props["Priority"] = {"select": {"name": task.priority}}
+                if task.task_type:
+                    update_props["Task type"] = {"multi_select": [{"name": task.task_type}]}
+                if task.description:
+                    update_props["Description"] = {"rich_text": [{"text": {"content": task.description}}]}
+                if task.attach_file:
+                    update_props["Attach file"] = {"files": [{"type": "external", "name": "attachment", "external": {"url": task.attach_file}}]}
+                if task.past_due is not None:
+                    update_props["Past due"] = {"checkbox": task.past_due}
+                if task.effort_level:
+                    update_props["Effort level"] = {"select": {"name": task.effort_level}}
+                if task.summary:
+                    update_props["Summary"] = {"rich_text": [{"text": {"content": task.summary}}]}
+                if not update_props:
+                    raise HTTPException(status_code=400, detail="No valid fields provided for update.")
                 notion.pages.update(
                     page_id=page["id"],
-                    properties={
-                        "Task name": {"title": [{"text": {"content": task.task_name}}]},
-                        "Status": {"status": {"name": task.status}} if task.status else {},
-                        "Assignee": {"people": [{"id": "6aaf53e2-c3b4-4fc6-93b3-c5d41e3f65a0"}]} if task.assignee else {},
-                        "Due date": {"date": {"start": task.due_date}} if task.due_date else {},
-                        "Priority": {"select": {"name": task.priority}} if task.priority else {},
-                        "Task type": {"multi_select": [{"name": task.task_type}]} if task.task_type else {},
-                        "Description": {"rich_text": [{"text": {"content": task.description}}]} if task.description else {},
-                        "Attach file": {"files": [{"type": "external", "name": "attachment", "external": {"url": task.attach_file}}]} if task.attach_file else {},
-                        "Past due": {"checkbox": task.past_due} if task.past_due is not None else {"checkbox": False},
-                        "Effort level": {"select": {"name": task.effort_level}} if task.effort_level else {},
-                        "Summary": {"rich_text": [{"text": {"content": task.summary}}]} if task.summary else {},
-                    }
+                    properties=update_props
                 )
                 return get_task(task_id)
             except Exception as e:
@@ -327,7 +349,7 @@ def mark_task_status(task_id: int, status: str):
 
 
 @app.patch("/tasks/{task_id}/comment")
-def add_comment(task_id: int, comment: str):
+def add_comment(task_id: int, comment: str, _: None = Depends(require_key)):
     pages = notion.databases.query(database_id=NOTION_DATABASE_ID)["results"]
     for page in pages:
         props = page["properties"]
@@ -352,7 +374,7 @@ def add_comment(task_id: int, comment: str):
 
 
 @app.patch("/tasks/{task_id}/link")
-def add_link(task_id: int, link: str):
+def add_link(task_id: int, link: str, _: None = Depends(require_key)):
     pages = notion.databases.query(database_id=NOTION_DATABASE_ID)["results"]
     for page in pages:
         props = page["properties"]
