@@ -17,11 +17,15 @@ app = FastAPI()
 # CORS is harmless for this public read endpoint and helps generic clients
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["GET","POST","PUT","DELETE","HEAD","OPTIONS"],
+    allow_origins=[
+        "https://jeevananm06.github.io",
+        "http://localhost:5500",  # if you test locally
+    ],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "OPTIONS", "HEAD"],
     allow_headers=["*"],
-    max_age=600,
 )
+
+API_KEY = os.getenv("PUBLIC_WRITE_KEY") 
 
 # Convert any uncaught exception into structured JSON (no opaque 500s)
 @app.exception_handler(Exception)
