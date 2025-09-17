@@ -52,8 +52,51 @@ def echo(request: Request):
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     logger.warning(f"Incoming request path: {request.url.path}")
-    response = await call_next(request)
-    return response
+    
+    # Process the request and get the response
+    original_response = await call_next(request)
+    
+    # Create a custom response logger using a simple wrapper
+    class ResponseLoggerMiddleware:
+        def __init__(self, response):
+            self.response = response
+        
+        async def __call__(self, scope, receive, send):
+            # Store the original send function
+            original_send = send
+            response_body = []
+            
+            # Create a new send function that captures the response body
+            async def custom_send(message):
+                if message["type"] == "http.response.body":
+                    # Capture the body
+                    body = message.get("body", b"")
+                    if body:
+                        response_body.append(body)
+                    
+                    # If this is the last chunk, log the complete response
+                    if not message.get("more_body", False) and response_body:
+                        try:
+                            full_body = b"".join(response_body)
+                            body_str = full_body.decode("utf-8")
+                            # Limit the log size to avoid huge logs
+                            if len(body_str) > 1000:
+                                log_body = body_str[:1000] + "... [truncated]"
+                            else:
+                                log_body = body_str
+                            
+                            logger.warning(f"Response for {request.url.path}: Status={original_response.status_code}, Body={log_body}")
+                        except Exception as e:
+                            logger.warning(f"Failed to log response body: {e}")
+                
+                # Forward the message to the original send function
+                await original_send(message)
+            
+            # Call the original response with our custom send function
+            await self.response(scope, receive, custom_send)
+    
+    # Wrap the original response with our logger
+    return ResponseLoggerMiddleware(original_response)
 
 # Configure logging with line numbers
 logging.basicConfig(
