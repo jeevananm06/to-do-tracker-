@@ -51,7 +51,7 @@ def echo(request: Request):
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    logger.warning(f"Incoming request path: {request.url.path}")
+    logger.info(f"Incoming request path: {request.url.path}")
     
     # Process the request and get the response
     original_response = await call_next(request)
@@ -85,9 +85,9 @@ async def log_requests(request: Request, call_next):
                             else:
                                 log_body = body_str
                             
-                            logger.warning(f"Response for {request.url.path}: Status={original_response.status_code}, Body={log_body}")
+                            logger.info(f"Response for {request.url.path}: Status={original_response.status_code}, Body={log_body}")
                         except Exception as e:
-                            logger.warning(f"Failed to log response body: {e}")
+                            logger.error(f"Failed to log response body: {e}")
                 
                 # Forward the message to the original send function
                 await original_send(message)
@@ -228,7 +228,7 @@ def about() -> dict[str, str]:
 @app.get("/tasks", response_model=List[Task])
 def api_get_all_tasks(request: Request):
     if request.headers.get("x-vercel-internal-bot-category") == "ai_assistant":
-        logger.warning(f"Bot access detected: UA={request.headers.get('user-agent')}")
+        logger.info(f"Bot access detected: UA={request.headers.get('user-agent')}")
         return get_all_tasks()  # Fallback for bots
     return get_all_tasks()
 
