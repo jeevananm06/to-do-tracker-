@@ -49,6 +49,11 @@ def health():
 def echo(request: Request):
     return {"headers": dict(request.headers), "url": str(request.url), "method": request.method}
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.warning(f"Incoming request path: {request.url.path}")
+    response = await call_next(request)
+    return response
 
 # Configure logging with line numbers
 logging.basicConfig(
