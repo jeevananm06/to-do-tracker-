@@ -181,7 +181,7 @@ def about() -> dict[str, str]:
 def api_get_all_tasks(request: Request):
     if request.headers.get("x-vercel-internal-bot-category") == "ai_assistant":
         logger.warning(f"Bot access detected: UA={request.headers.get('user-agent')}")
-        return get_all_tasks()  # Fallback for bots
+        return load_tasks()  # Fallback for bots
     return get_all_tasks()
 
 
