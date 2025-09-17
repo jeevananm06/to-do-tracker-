@@ -17,11 +17,8 @@ app = FastAPI()
 # CORS is harmless for this public read endpoint and helps generic clients
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://jeevananm06.github.io",
-        "http://localhost:5500",  # if you test locally
-    ],
-    allow_methods=["GET", "POST", "PUT", "PATCH", "OPTIONS", "HEAD"],
+    allow_origins=["*"],  # if you test locally
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -181,7 +178,10 @@ def about() -> dict[str, str]:
 
 
 @app.get("/tasks", response_model=List[Task])
-def api_get_all_tasks():
+def api_get_all_tasks(request: Request):
+    if request.headers.get("x-vercel-internal-bot-category") == "ai_assistant":
+        logger.warning(f"Bot access detected: UA={request.headers.get('user-agent')}")
+        return get_all_tasks()  # Fallback for bots
     return get_all_tasks()
 
 
